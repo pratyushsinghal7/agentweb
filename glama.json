@@ -1,0 +1,13 @@
+{
+  "$schema": "https://glama.ai/mcp/schemas/server.json",
+  "maintainers": ["AnayGarodia"],
+  "keywords": [
+    "agents",
+    "cli",
+    "web",
+    "automation",
+    "browserless",
+    "website-adapters",
+    "coding-agents"
+  ]
+}

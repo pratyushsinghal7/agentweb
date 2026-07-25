@@ -1,0 +1,229 @@
+{
+  "generated_from": "src/agentweb/builtin_registry",
+  "note": "Machine-readable index of the reference adapters shipped in this repository. The full installer catalog is larger; run `agentweb sites` and `agentweb capabilities DOMAIN` for the live inventory. Regenerate with: python scripts/build_capabilities_index.py",
+  "sites": [
+    {
+      "name": "arxiv",
+      "version": "0.1.4",
+      "canonical_domain": "arxiv.org",
+      "base_url": "https://arxiv.org",
+      "description": "Complete agent interface for arxiv.org",
+      "operations": [
+        {
+          "operation": "download_pdf",
+          "description": "Download the rendered PDF for a known public arXiv paper and return a local file receipt with an integrity digest."
+        },
+        {
+          "operation": "download_source",
+          "description": "Download the public source bundle for a known arXiv paper and return a local file receipt with an integrity digest."
+        },
+        {
+          "operation": "get_bibtex",
+          "description": "Retrieve arXiv's BibTeX citation text for a known public paper identifier."
+        },
+        {
+          "operation": "get_category_feed",
+          "description": "Read and normalize the current public RSS announcements for an exact arXiv category."
+        },
+        {
+          "operation": "get_papers",
+          "description": "Retrieve normalized metadata for one or more exact arXiv identifiers, including version-specific records when requested."
+        },
+        {
+          "operation": "list_author_papers",
+          "description": "Find public arXiv papers credited to a named author and return the newest matching records with normalized metadata."
+        },
+        {
+          "operation": "list_bulk_data_resources",
+          "description": "List official arXiv bulk-access resources for metadata, PDFs, source archives, terms, and incremental harvesting."
+        },
+        {
+          "operation": "list_categories",
+          "description": "List arXiv's complete public archive and subject-category catalog with canonical browsing links."
+        },
+        {
+          "operation": "list_category_papers",
+          "description": "List the newest public papers in an exact arXiv subject category with normalized metadata and stable offset pagination."
+        },
+        {
+          "operation": "list_export_formats",
+          "description": "List the public format, source, help, and scholarly-resource links exposed by arXiv for a known paper."
+        },
+        {
+          "operation": "list_site_resources",
+          "description": "List official public arXiv information, help, policy, status, statistics, accessibility, and project-resource links."
+        },
+        {
+          "operation": "read_site_resource",
+          "description": "Read the normalized text of an official public arXiv information, help, policy, accessibility, statistics, or project page."
+        },
+        {
+          "operation": "search_papers",
+          "description": "Search the complete public arXiv corpus with its expressive query language and return normalized paper metadata."
+        }
+      ]
+    },
+    {
+      "name": "npm",
+      "version": "0.1.0",
+      "canonical_domain": "npmjs.com",
+      "base_url": "https://www.npmjs.com",
+      "description": "Complete browserless interface for npm's anonymous public registry and website surfaces: discovery, metadata, releases, dependencies, dependents, downloads, provenance, security, package contents, documentation, and service health.",
+      "operations": [
+        {
+          "operation": "audit_versions",
+          "description": "Check explicit public npm package versions against npm's bulk security advisory service."
+        },
+        {
+          "operation": "download_tarball",
+          "description": "Download one public npm package tarball and return a private local file receipt with its SHA-256 digest."
+        },
+        {
+          "operation": "get_download_count",
+          "description": "Return npm's aggregate download count for a package over a named period or explicit date range."
+        },
+        {
+          "operation": "get_download_history",
+          "description": "Return a bounded daily npm download series for up to 366 days with local cursor pagination."
+        },
+        {
+          "operation": "get_package",
+          "description": "Return a bounded package overview with the latest release, tags, maintainers, links, and README preview."
+        },
+        {
+          "operation": "get_provenance",
+          "description": "Return bounded npm publish and SLSA provenance attestations with transparency-log identifiers."
+        },
+        {
+          "operation": "get_readme",
+          "description": "Read the package README directly from the registry with an explicit character bound and truncation signal."
+        },
+        {
+          "operation": "get_registry_status",
+          "description": "Return npm's current overall status, component states, and active public incidents."
+        },
+        {
+          "operation": "get_version",
+          "description": "Resolve an exact version or distribution tag and return its normalized manifest, dependencies, and integrity data."
+        },
+        {
+          "operation": "list_dependencies",
+          "description": "List one package version's runtime, development, peer, optional, and bundled dependencies in normalized pages."
+        },
+        {
+          "operation": "list_dependents",
+          "description": "List packages that npm currently shows as depending on a public package, using npm's browser-compatible public page."
+        },
+        {
+          "operation": "list_maintainer_packages",
+          "description": "List public packages associated with an npm maintainer account using the registry's maintained search index."
+        },
+        {
+          "operation": "list_package_files",
+          "description": "Inspect a published npm tarball and list its files, sizes, modes, and entry types without extracting it."
+        },
+        {
+          "operation": "list_versions",
+          "description": "List a package's releases in publication order with dates, deprecations, manifests, and distribution integrity."
+        },
+        {
+          "operation": "read_package_file",
+          "description": "Read one bounded regular file directly from a public npm tarball as UTF-8 text or base64."
+        },
+        {
+          "operation": "read_site_resource",
+          "description": "Read a bounded public npmjs.com policy, product, help, or docs.npmjs.com page without opening a browser."
+        },
+        {
+          "operation": "search_packages",
+          "description": "Search the public npm registry with npm's text, keyword, maintainer, and scope query syntax."
+        }
+      ]
+    },
+    {
+      "name": "wikipedia",
+      "version": "0.8.5",
+      "canonical_domain": "wikipedia.org",
+      "base_url": "https://www.wikipedia.org",
+      "description": "Broad public Wikipedia research across search, pages, links, categories, history, languages, geography, users, and random discovery.",
+      "operations": [
+        {
+          "operation": "account_status",
+          "description": "Verify the retained Wikipedia session and report the authenticated user, groups, rights, and block state."
+        },
+        {
+          "operation": "api_query",
+          "description": "Bounded read-only escape hatch for MediaWiki query, parse, opensearch, and help actions. Write actions are rejected."
+        },
+        {
+          "operation": "api_request",
+          "description": "Call a fixed-host MediaWiki Action API operation. Read actions use GET; mutations use POST, require confirm, reuse the retained login session, and fetch a fresh CSRF token automatically."
+        },
+        {
+          "operation": "backlinks",
+          "description": "List main-namespace pages that link to an article."
+        },
+        {
+          "operation": "categories",
+          "description": "List the visible categories assigned to an article."
+        },
+        {
+          "operation": "category_members",
+          "description": "List pages and subcategories inside a Wikipedia category."
+        },
+        {
+          "operation": "edit",
+          "description": "Create or replace a Wikipedia page through the MediaWiki Action API. AgentWeb fetches the CSRF token automatically; confirm is mandatory."
+        },
+        {
+          "operation": "images",
+          "description": "List image and media file pages used by an article."
+        },
+        {
+          "operation": "languages",
+          "description": "List available language editions for an article."
+        },
+        {
+          "operation": "links",
+          "description": "List main-namespace pages linked from an article."
+        },
+        {
+          "operation": "nearby",
+          "description": "Find geotagged Wikipedia pages near coordinates."
+        },
+        {
+          "operation": "page",
+          "description": "Read a Wikipedia page as bounded plain text with canonical metadata."
+        },
+        {
+          "operation": "pageviews",
+          "description": "Return daily public pageviews and a total for a date range."
+        },
+        {
+          "operation": "random",
+          "description": "Return random article titles and links from a Wikipedia language edition."
+        },
+        {
+          "operation": "revisions",
+          "description": "List recent page revisions with editors, comments, sizes, and timestamps."
+        },
+        {
+          "operation": "search",
+          "description": "Search Wikipedia article titles and text with compact snippets."
+        },
+        {
+          "operation": "sections",
+          "description": "List an article's section hierarchy and anchors."
+        },
+        {
+          "operation": "upload",
+          "description": "Upload a local file through MediaWiki's multipart Action API. AgentWeb fetches the CSRF token automatically and never returns the local path; confirm is mandatory."
+        },
+        {
+          "operation": "user_contributions",
+          "description": "List a public Wikipedia user's recent contributions."
+        }
+      ]
+    }
+  ]
+}
