@@ -1,0 +1,27 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-07-09/server.schema.json",
+  "name": "io.github.anaygarodia/agentweb",
+  "description": "Use websites as fast, typed commands: mapped website operations for coding agents with JSON results, login sessions, and confirmation-gated writes.",
+  "repository": {
+    "url": "https://github.com/AnayGarodia/agentweb",
+    "source": "github"
+  },
+  "version": "0.19.3",
+  "packages": [
+    {
+      "registryType": "pypi",
+      "identifier": "agentweb-cli",
+      "version": "0.19.3",
+      "transport": {
+        "type": "stdio"
+      },
+      "runtimeHint": "python",
+      "runtimeArguments": [
+        {
+          "type": "positional",
+          "value": "mcp"
+        }
+      ]
+    }
+  ]
+}

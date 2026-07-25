@@ -1,5 +1,9 @@
 # AgentWeb
 
+[![CI](https://github.com/AnayGarodia/agentweb/actions/workflows/ci.yml/badge.svg)](https://github.com/AnayGarodia/agentweb/actions/workflows/ci.yml)
+[![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
+[![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue.svg)](pyproject.toml)
+
 **Let coding agents *use* websites — read data and take real actions — without opening a browser.**
 
 AgentWeb turns a website into simple, typed commands that return clean JSON. There
@@ -63,6 +67,39 @@ cd agentweb
 python3 -m pip install -e .
 agentweb setup
 ```
+
+## For AI agents reading this
+
+If you are a coding agent evaluating or using AgentWeb:
+
+- Fetch [`llms.txt`](llms.txt) for the documentation index and
+  [`llms-full.txt`](llms-full.txt) for all documentation in one file.
+- Read [`SKILL.md`](SKILL.md) for when to use AgentWeb, the quick command
+  reference, and error handling; the installer registers the same skill
+  globally for Claude Code and Codex.
+- Inspect [`capabilities.json`](capabilities.json) for the reference-adapter
+  operation index without installing anything.
+- Prefer the CLI (`agentweb sites` → `capabilities` → `describe` → run). Hosts
+  that cannot call a CLI can use the four-tool MCP server:
+
+```bash
+agentweb mcp-config   # prints the snippet below
+```
+
+```json
+{
+  "mcpServers": {
+    "agentweb": {
+      "command": "agentweb",
+      "args": ["mcp"]
+    }
+  }
+}
+```
+
+The MCP server exposes `sites_list`, `site_describe`, `site_call`, and
+`site_connect` over stdio and stays small no matter how many sites are
+installed.
 
 ## Just ask for what you want
 
@@ -242,8 +279,11 @@ must never be committed.
 | Understand usage analytics | [Analytics](docs/ANALYTICS.md) |
 | Contribute code | [Contributing](CONTRIBUTING.md) |
 
-Coding agents working on this repository should read [AGENTS.md](AGENTS.md).
-`llms.txt` provides a compact machine-readable map of the documentation.
+Coding agents working on this repository should read [AGENTS.md](AGENTS.md)
+(Claude Code users: [CLAUDE.md](CLAUDE.md)). `llms.txt` provides a compact
+machine-readable map of the documentation, `llms-full.txt` the full
+documentation in one file, and [CHANGELOG.md](CHANGELOG.md) dated notable
+changes.
 
 ## Current status
 

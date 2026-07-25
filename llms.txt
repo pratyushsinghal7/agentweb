@@ -4,6 +4,11 @@ AgentWeb is a CLI and Python runtime that exposes versioned website operations t
 coding agents. The public repository contains the open core and reference adapters,
 not the private automatic adapter factory or official maintained adapter catalog.
 
+Machine-readable companions:
+- llms-full.txt: all repository documentation concatenated for one-shot ingestion
+- SKILL.md: installable agent skill (when/when-not-to-use, quick reference)
+- capabilities.json: reference-adapter operation index without installing
+
 Fast start:
 - Install: curl -fsSL https://github.com/AnayGarodia/agentweb/raw/refs/heads/main/install.sh | sh
 - First prompt: Use AgentWeb to find the latest version of React on npm.
@@ -19,6 +24,8 @@ Documentation:
 - docs/ANALYTICS.md: localhost dashboard, metric definitions, privacy, and optional aggregate collection
 - docs/ARCHITECTURE.md: code map and request lifecycle
 - AGENTS.md: repository invariants and verification commands for coding agents
+- CLAUDE.md: Claude Code pointer to AGENTS.md and verification commands
+- CHANGELOG.md: dated notable changes
 
 Primary CLI sequence:
 1. agentweb sites

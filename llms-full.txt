@@ -1,0 +1,1228 @@
+# AgentWeb — full documentation
+
+This file concatenates the repository documentation for one-shot ingestion by
+LLMs and agents. The index lives in llms.txt. Each section names its source
+file; sources in the repository are authoritative if this file is stale.
+Regenerate with: python scripts/build_llms_full.py
+
+---
+
+Source: README.md
+
+# AgentWeb
+
+[![CI](https://github.com/AnayGarodia/agentweb/actions/workflows/ci.yml/badge.svg)](https://github.com/AnayGarodia/agentweb/actions/workflows/ci.yml)
+[![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
+[![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue.svg)](pyproject.toml)
+
+**Let coding agents *use* websites — read data and take real actions — without opening a browser.**
+
+AgentWeb turns a website into simple, typed commands that return clean JSON. There
+are two kinds:
+
+**Read** — look things up:
+
+```bash
+agentweb arxiv.org search-papers --query "graph neural networks" --limit 3
+agentweb npmjs.com get-version --package react --version latest
+agentweb wikipedia.org page --title "Alan Turing"
+```
+
+**Act** — actually do things on your own accounts. Impactful or irreversible
+actions (checkout, posting, opening a PR) require an explicit `--confirm`:
+
+```bash
+agentweb spotify play --query "Massive Attack Teardrop"
+agentweb amazon add-to-cart --asin B0XXXXXXXX
+agentweb github create-pull-request --owner you --repo app --head fix --base main --confirm
+```
+
+An agent discovers what a site supports, calls the right command, and uses the
+result directly — no screenshots, no hunting for buttons, no re-parsing a page for
+a workflow that has already been mapped.
+
+**Actions are the point.** Reads are often a web search away; *doing* things — play
+a song, place an order, open a pull request, post a comment — is what a browserless
+interface uniquely unlocks. Every mapped action is typed, state-changing ones are
+confirmation-gated, and each is verified against the live site where possible;
+where a site offers no safe way to prove an action, AgentWeb says so instead of
+pretending.
+
+## Try it in one minute
+
+AgentWeb supports macOS and Linux. If Python 3.11 or newer is not already
+available, the installer provisions an isolated Python automatically.
+
+```bash
+curl -fsSL https://github.com/AnayGarodia/agentweb/raw/refs/heads/main/install.sh | sh
+```
+
+Restart Claude Code or Codex, then paste this prompt:
+
+```text
+Use AgentWeb to find the latest version of React on npm.
+```
+
+That is the intended experience. The installer adds a global AgentWeb skill for
+Claude Code and Codex containing the CLI's absolute path, and installs everything
+in an isolated environment under `~/.local/share/agentweb`. New agent sessions can
+therefore discover AgentWeb even when the app does not inherit `~/.local/bin` in its
+PATH. It does not change your system Python packages or register MCP automatically.
+
+Prefer to inspect scripts before running them? [Read `install.sh`](install.sh), or
+install from a checkout:
+
+```bash
+git clone https://github.com/AnayGarodia/agentweb.git
+cd agentweb
+python3 -m pip install -e .
+agentweb setup
+```
+
+## For AI agents reading this
+
+If you are a coding agent evaluating or using AgentWeb:
+
+- Fetch [`llms.txt`](llms.txt) for the documentation index and
+  [`llms-full.txt`](llms-full.txt) for all documentation in one file.
+- Read [`SKILL.md`](SKILL.md) for when to use AgentWeb, the quick command
+  reference, and error handling; the installer registers the same skill
+  globally for Claude Code and Codex.
+- Inspect [`capabilities.json`](capabilities.json) for the reference-adapter
+  operation index without installing anything.
+- Prefer the CLI (`agentweb sites` → `capabilities` → `describe` → run). Hosts
+  that cannot call a CLI can use the four-tool MCP server:
+
+```bash
+agentweb mcp-config   # prints the snippet below
+```
+
+```json
+{
+  "mcpServers": {
+    "agentweb": {
+      "command": "agentweb",
+      "args": ["mcp"]
+    }
+  }
+}
+```
+
+The MCP server exposes `sites_list`, `site_describe`, `site_call`, and
+`site_connect` over stdio and stays small no matter how many sites are
+installed.
+
+## Just ask for what you want
+
+Once installed, prompts can be ordinary tasks:
+
+```text
+Use AgentWeb to find three recent arXiv papers about coding agents.
+
+Use AgentWeb to compare the dependencies of React and Vue on npm.
+
+Use AgentWeb to research Alan Turing on Wikipedia and follow the most relevant links.
+
+Use AgentWeb to find software engineering jobs on LinkedIn in San Francisco.
+```
+
+The agent handles discovery and commands. You should not need to translate your
+request into CLI syntax. If the installer could not detect your coding agent, the
+manual connection commands are:
+
+```bash
+agentweb install-agent claude --scope user
+agentweb install-agent codex --scope user
+```
+
+See [agent setup](docs/AGENT_HOSTS.md) for the exact behavior Claude Code and Codex
+should follow around login, retries, and writes.
+
+## See whether AgentWeb is being used
+
+Open the private usage dashboard:
+
+```bash
+agentweb dashboard
+```
+
+It opens on `127.0.0.1` and immediately shows activity from this installation:
+people, first-task activation, repeat use, website actions, success rate, latency,
+common operations, agent paths, and failures. Connect a PostHog project from the
+same page when you want the localhost dashboard to combine anonymous events from
+public installations.
+
+AgentWeb never records prompts, arguments, URLs, website responses, account
+identities, cookies, or credentials. Inspect or disable analytics at any time:
+
+```bash
+agentweb telemetry inspect
+agentweb telemetry disable
+```
+
+Read [usage analytics](docs/ANALYTICS.md) for the exact event schema and global
+dashboard setup.
+
+## What the agent does underneath
+
+```bash
+# See which websites are installed
+agentweb sites
+
+# Discover what one website supports
+agentweb capabilities arxiv.org
+
+# Run the selected action
+agentweb arxiv.org search-papers --query "attention" --limit 3
+```
+
+Most users do not need to run these themselves. They are the predictable interface
+the coding agent uses. If an argument is unclear, the agent can inspect only that
+action:
+
+```bash
+agentweb describe arxiv.org --operation search_papers
+```
+
+Commands accept normal domains and many normal website URLs. Results and expected
+errors are JSON, so agents do not need site-specific parsing code.
+
+## What is included today?
+
+The installer currently ships these 11 mapped websites:
+
+| Website | Domain | What an agent can do |
+| --- | --- | --- |
+| Amazon | `amazon.com` | Search and compare products, inspect reviews and deals, manage a cart and addresses, read orders, and complete a confirmed checkout |
+| arXiv | `arxiv.org` | Search papers, inspect metadata and categories, get BibTeX, and download PDFs or source |
+| GitHub | `github.com` | Work with repositories, files, commits, branches, releases, issues, pull requests, users, and authenticated API requests |
+| GST | `gst.gov.in` | Search HSN/SAC data and browse practitioners, advisories, due dates, holidays, laws, statistics, and tools |
+| Hacker News | `news.ycombinator.com` | Read and search stories, comments, users, and activity; submit, edit, vote, flag, and favorite when signed in |
+| Hugging Face | `huggingface.co` | Explore models, datasets, Spaces, repositories, files, papers, documentation, collections, and community discussions |
+| LinkedIn | `linkedin.com` | Search public jobs, inspect jobs and companies, keep a normal website login, and call approved official API endpoints |
+| npm | `npmjs.com` | Search packages and inspect versions, dependencies, downloads, provenance, maintainers, tarballs, and package files |
+| Spotify | `open.spotify.com` | Search and play music, control the desktop player, and manage playback, devices, queues, libraries, and playlists after login |
+| Stack Overflow | `stackoverflow.com` | Search and read questions, answers, comments, users, and tags; ask, answer, comment, and vote when signed in |
+| Wikipedia | `wikipedia.org` | Search and read pages, links, categories, revisions, languages, images, nearby pages, and pageviews; edit or upload when signed in |
+
+Run `agentweb capabilities DOMAIN` for the current exact operation list and any
+declared gaps. The installer ships every site above.
+
+This public repository also includes three fully open reference adapters:
+
+| Reference adapter | Examples |
+| --- | --- |
+| npm | Search packages, versions, downloads, dependencies, provenance, and files |
+| arXiv | Search papers, metadata, authors, categories, BibTeX, PDFs, and source |
+| Wikipedia | Search, pages, links, categories, revisions, images, and pageviews |
+
+AgentWeb's larger maintained website catalog is distributed separately. This
+repository is the open core: the command-line tool, runtime, login/session system,
+adapter format, signed updater, tests, and reference adapters. The automatic system
+used to map and repair the official catalog is not in this repository.
+
+## How it works
+
+```text
+website mapped once -> versioned AgentWeb adapter -> reusable commands for every agent
+```
+
+Each adapter describes the website's actions, inputs, output, login needs, and
+known gaps. AgentWeb keeps the common behavior in one runtime: domains, sessions,
+request limits, confirmation for writes, structured errors, and safe updates.
+
+### Why Spotify uses the desktop app
+
+This is a Spotify-specific path built into its AgentWeb adapter. For simple
+playback on macOS, AgentWeb resolves a song to a Spotify URI, sends an Apple Event
+to the installed Spotify app, and reads the player state back to verify what
+happened. Account features such as playlists, the library, queue, and remote
+devices use a saved Spotify Web Player session and Spotify Connect after one
+normal login.
+
+AgentWeb provides the common machinery for adapters to use direct website
+requests, official APIs, saved sessions, or local app bridges. It does not
+automatically control the desktop app for every website. A similar fast path can
+be added when another service exposes a usable local protocol, URL scheme, or
+operating-system automation interface, but it must be implemented and verified
+for that service.
+
+The browser can still appear when the website itself requires a person to log in,
+solve a CAPTCHA, use a passkey, enter a one-time code, accept legal terms, or
+confirm payment. It is not the normal path for already-mapped actions.
+
+## Login only when needed
+
+Try public commands without logging in. If an account action needs authorization,
+AgentWeb returns `authentication_required`. Then the user runs:
+
+```bash
+agentweb connect example.com
+```
+
+Sessions stay on that user's device under `~/.agentweb`. They are not bundled into
+an adapter or shared with other users. Read [security and trust](docs/SECURITY.md)
+before installing an authenticated third-party adapter.
+
+## Build an adapter
+
+The open core includes the public pieces needed to build and distribute an adapter:
+
+```bash
+agentweb adapter-new example --base-url https://example.com --root ./registry
+agentweb registry-build ./registry
+agentweb audit example --root ./registry
+```
+
+Start with [building an adapter](docs/BUILDING_ADAPTERS.md). The documentation is
+explicit about login, write confirmation, evidence, incomplete coverage, and what
+must never be committed.
+
+## Documentation
+
+| If you want to… | Read… |
+| --- | --- |
+| Use AgentWeb from an agent | [Agent guide](docs/AGENT_GUIDE.md) |
+| Connect Claude Code or Codex | [Agent setup](docs/AGENT_HOSTS.md) |
+| Understand the code | [Architecture](docs/ARCHITECTURE.md) |
+| Build a website adapter | [Adapter guide](docs/BUILDING_ADAPTERS.md) |
+| Understand sessions and safety | [Security](docs/SECURITY.md) |
+| Understand usage analytics | [Analytics](docs/ANALYTICS.md) |
+| Contribute code | [Contributing](CONTRIBUTING.md) |
+
+Coding agents working on this repository should read [AGENTS.md](AGENTS.md)
+(Claude Code users: [CLAUDE.md](CLAUDE.md)). `llms.txt` provides a compact
+machine-readable map of the documentation, `llms-full.txt` the full
+documentation in one file, and [CHANGELOG.md](CHANGELOG.md) dated notable
+changes.
+
+## Current status
+
+AgentWeb is an early public preview. Websites can change endpoints, revoke
+sessions, add verification, or rate-limit requests. AgentWeb reports an adapter's
+known gaps and verification state instead of claiming that every action will work
+forever.
+
+The public core is licensed under [Apache-2.0](LICENSE). Official adapter bundles,
+hosted services, and the private mapping system may use separate terms.
+
+---
+
+Source: AGENTS.md
+
+# Instructions for coding agents
+
+Read `README.md` first. Use `docs/ARCHITECTURE.md` for runtime changes,
+`docs/BUILDING_ADAPTERS.md` for adapter changes, and `docs/SECURITY.md` for any
+change involving sessions, requests, registries, files, or write confirmation.
+
+The public repository must remain usable without AgentWeb's private adapter
+factory. Do not import `workbench`, `authoring`, `author_mcp`, private release
+gates, private captures, or official proprietary adapter bundles.
+
+Preserve these invariants:
+
+- ordinary typed operations do not launch a browser;
+- adapter requests cannot escape their declared HTTPS host allowlist;
+- profiles never share cookies, cached authenticated data, or tokens;
+- every mutating operation requires explicit confirmation;
+- remote registry updates require a pinned Ed25519 key and matching file hashes;
+- returned data stays bounded before it reaches an agent;
+- incomplete coverage is reported rather than described as full parity.
+
+Before finishing a change, run:
+
+```bash
+python -m pytest -q
+python -m build
+PYTHONPATH=src python -m agentweb.cli audit
+```
+
+For package-boundary changes, also inspect the wheel and confirm that it contains
+only the public modules and the three active reference adapters.
+
+---
+
+Source: SKILL.md
+
+---
+name: agentweb
+description: >-
+  Use websites as fast, typed CLI commands instead of a browser. AgentWeb
+  exposes mapped website operations (read data and take confirmed actions on
+  sites like npm, arXiv, Wikipedia, GitHub, Hacker News, Amazon, Spotify) as
+  JSON-returning shell commands. Use this skill whenever a task needs live
+  website data or a website action and the site is in `agentweb sites`.
+license: Apache-2.0
+compatibility: Claude Code, Codex, and any coding agent with shell access
+---
+
+# AgentWeb
+
+AgentWeb turns a website into simple, typed commands that return clean JSON.
+Reads look things up; acts do real things on the user's accounts and require an
+explicit `--confirm` for impactful or irreversible operations.
+
+## When to use
+
+- The task needs live data from a mapped website (package metadata, papers,
+  wiki content, jobs, models, questions, stories).
+- The task needs a real website action (play a song, manage a cart, open a
+  pull request, post or vote) without driving a browser.
+
+Check support first; never guess:
+
+```bash
+agentweb sites
+```
+
+## When not to use
+
+- The site is not listed in `agentweb sites` and no adapter is installed.
+- The operation reports `declared_gaps` covering exactly what you need.
+- A website-mandated human checkpoint (CAPTCHA, passkey, OTP, payment
+  confirmation, legal consent) is required — hand that step to the user.
+
+## Quick reference
+
+```bash
+agentweb sites                                        # which websites are installed
+agentweb capabilities npmjs.com --query download      # find the operation
+agentweb describe npmjs.com --operation get_download_count   # one schema, on demand
+agentweb npmjs.com get-download-count --package react --period last-week
+agentweb --compact npmjs.com get-package --package react     # machine-friendly output
+agentweb run npmjs.com get_download_count --input '{"package":"react","period":"last-week"}'
+agentweb get https://arxiv.org/abs/1706.03762         # typed route for a normal URL
+```
+
+Do not load every schema preemptively; `describe` only the operation you will
+call.
+
+## Authentication
+
+Try public operations first. On `authentication_required`, ask the user to run:
+
+```bash
+agentweb connect example.com
+```
+
+then retry the original call. Never copy browser cookies into chat, logs, or
+command arguments.
+
+## Writes
+
+Treat an operation as mutating when its contract says so. Read current state
+when practical, resolve ambiguous targets and totals, confirm the user's
+request authorizes the specific action, pass the explicit `confirm` value, and
+inspect the returned verification instead of assuming success.
+
+## Errors
+
+Expected failures are JSON on stderr. Key classes: `missing_input` /
+`invalid_input` (fix the arguments), `authentication_required` (ask the user to
+connect), `rate_limited` (respect the returned delay; no retry loops),
+`human_required` (hand off only that checkpoint), `flow_drift` (the website
+changed; stop relying on that operation and report it).
+
+## Full guide
+
+Read `docs/AGENT_GUIDE.md` for the complete execution loop, and `llms.txt` for
+the documentation index. MCP-only hosts can use the four-tool MCP server:
+`agentweb mcp-config` prints the configuration snippet.
+
+---
+
+Source: docs/README.md
+
+# AgentWeb documentation
+
+You do not need to read every document.
+
+## I want to use AgentWeb
+
+Start with the [main README](../README.md), then use the
+[agent guide](AGENT_GUIDE.md) when an agent needs exact rules for login, errors,
+retries, workflows, and writes.
+
+For Claude Code, Codex, or optional MCP setup, read [agent setup](AGENT_HOSTS.md).
+For local and aggregate usage measurement, read [usage analytics](ANALYTICS.md).
+
+## I want to understand or change the code
+
+Read [architecture](ARCHITECTURE.md), then the repository's
+[AGENTS.md](../AGENTS.md) for invariants and verification commands.
+
+## I want to add a website
+
+Read [building an adapter](BUILDING_ADAPTERS.md) and
+[security and trust](SECURITY.md). Start with a public, read-only operation before
+adding login or writes.
+
+## I found a problem
+
+Use a GitHub bug report for normal defects. Use the private security-advisory flow
+for credential exposure, cross-profile access, request-allowlist escape,
+signature bypass, or unintended remote writes. See [the security policy](../SECURITY.md).
+
+---
+
+Source: docs/AGENT_GUIDE.md
+
+# Using AgentWeb as an agent
+
+This is the shortest reliable procedure for Claude Code, Codex, and other agents
+with shell access.
+
+## 1. Check support
+
+Do not guess whether a website is installed:
+
+```bash
+agentweb sites
+```
+
+Use the website's normal domain in new commands. AgentWeb also accepts adapter
+aliases and supported resource URLs.
+
+## 2. Find the operation
+
+Search the small catalog before loading a full schema:
+
+```bash
+agentweb capabilities npmjs.com --query download
+```
+
+If one operation looks suitable, load only that operation:
+
+```bash
+agentweb describe npmjs.com --operation get_download_count
+```
+
+Do not load every schema preemptively. That wastes context and makes action
+selection harder.
+
+## 3. Execute the typed operation
+
+The direct domain-first form is preferred:
+
+```bash
+agentweb npmjs.com get-download-count --package react --period last-week
+```
+
+For complicated nested values, use the stable JSON form:
+
+```bash
+agentweb run npmjs.com get_download_count \
+  --input '{"package":"react","period":"last-week"}'
+```
+
+Use `--compact` before the command when another program will consume the result:
+
+```bash
+agentweb --compact npmjs.com get-package --package react
+```
+
+## 4. Interpret the result
+
+Normal results contain the site, operation, data, verification information, and
+request metadata. Do not treat a successful HTTP status alone as proof that a
+write happened. Use operation-specific verification fields when available.
+
+Expected failures are JSON on stderr. Important classes include:
+
+| Error | Meaning | Agent response |
+| --- | --- | --- |
+| `missing_input`, `invalid_input`, or `invalid_request` | The call is malformed | Fix the arguments; do not ask the user unless the value is genuinely unknown |
+| `authentication_required` | The operation needs the user's account | Ask permission, then tell the user to run the returned connection command |
+| `configuration_required` | A site-specific non-secret setting is missing | Collect only the named setting and run the suggested operation |
+| `rate_limited` | The website refused more requests temporarily | Respect the returned delay; do not create a retry loop |
+| `human_required` | The site requires CAPTCHA, passkey, OTP, consent, or another human checkpoint | Hand off only that checkpoint and resume afterward |
+| `flow_drift` or output mismatch | The website changed | Stop relying on the affected operation and report the adapter/version |
+| `internal_error` | AgentWeb itself failed unexpectedly | Retry once only if the operation is read-only; report it with `agentweb --version` |
+
+Never solve an authentication error by copying browser cookies into chat, logs, or
+command arguments.
+
+## 5. Authorization
+
+Public operations should be attempted before login. When a protected operation
+returns `authentication_required`, preserve the original arguments and ask the
+user to complete:
+
+```bash
+agentweb connect example.com
+```
+
+After the command reports a verified account, retry the original read. For a
+write, obtain confirmation again because authorization completion is not approval
+for the pending mutation.
+
+Named profiles keep different accounts separate:
+
+```bash
+agentweb --profile work auth status example.com
+agentweb --profile personal example.com account-status
+```
+
+## 6. Writes and purchases
+
+Treat an operation as mutating when its contract says so, even if its name sounds
+harmless. Before a write:
+
+1. Read the current state when practical.
+2. Resolve ambiguous targets, quantities, recipients, addresses, and totals.
+3. Confirm that the user's request authorizes this specific action.
+4. Pass the operation's explicit `confirm` value.
+5. Supply an idempotency key when the task interface supports it.
+6. Inspect the returned verification instead of assuming success.
+
+Do not invent a product policy that forbids an action the user explicitly requested.
+Do not bypass a website-mandated human security or legal-consent checkpoint either.
+
+## 7. URLs and workflows
+
+Use `agentweb get URL` when an adapter declares a typed route for a normal website
+URL:
+
+```bash
+agentweb get https://arxiv.org/abs/1706.03762
+```
+
+Use `workflow` when later steps need structured output from earlier steps:
+
+```bash
+agentweb workflow npmjs.com --steps '[
+  {"name":"pkg","action":"get_package","arguments":{"package":"react"}},
+  {"name":"versions","action":"list_versions","arguments":{"package":"$pkg.data.name"}}
+]'
+```
+
+Keep workflows on one site. Avoid parallel calls when they share live playback,
+cart, quota, or other state whose order matters.
+
+## 8. Freshness and coverage
+
+Use `--fresh` when the user asks for current account, cart, playback, price, quota,
+or similarly volatile state:
+
+```bash
+agentweb --fresh example.com account-status
+```
+
+Before promising that AgentWeb can perform every website action, inspect:
+
+```bash
+agentweb audit example.com
+agentweb describe example.com --parity-details
+```
+
+`browserless_replay` means normal execution does not need a browser. It does not
+mean the site can never require a human checkpoint. `declared_gaps` and audit
+failures are part of the result, not documentation to ignore.
+
+---
+
+Source: docs/AGENT_HOSTS.md
+
+# Agent host setup
+
+AgentWeb's CLI is the primary integration. A coding agent with shell access can
+discover and call every installed adapter without loading hundreds of operation
+schemas into its prompt.
+
+Install it once for the current user:
+
+```bash
+curl -fsSL https://github.com/AnayGarodia/agentweb/raw/refs/heads/main/install.sh | sh
+```
+
+The installer detects Claude Code and Codex, registers AgentWeb with each one, and
+performs website setup automatically. Restart the coding agent, then ask a normal
+question such as:
+
+```text
+Use AgentWeb to find the latest version of React on npm.
+```
+
+## Claude Code
+
+The main installer connects Claude Code automatically when `claude` is on `PATH`.
+If it was installed afterward or detection failed, connect it manually:
+
+```bash
+agentweb install-agent claude --scope user
+```
+
+The agent should follow `docs/AGENT_GUIDE.md`. A useful project instruction is:
+
+```text
+For supported websites, use the AgentWeb CLI. Start with `agentweb capabilities
+DOMAIN --query TERM`, inspect one operation with `agentweb describe`, and then call
+it. Attempt public operations before login. Ask me to run `agentweb connect DOMAIN`
+only after authentication_required. Reconfirm writes after authorization.
+```
+
+## Codex
+
+The main installer also connects Codex automatically when `codex` is on `PATH`.
+Manual fallback:
+
+```bash
+agentweb install-agent codex --scope user
+```
+
+The same CLI sequence applies. Keep AgentWeb results as JSON rather than converting
+them to screenshots or scraping them with regular expressions.
+
+## Generic coding agents
+
+If the host can run shell commands, no plugin is required. Verify that `agentweb`
+is on `PATH`, give the host the short instruction above, and let it use `--help`,
+`capabilities`, and `describe` for discovery.
+
+## Optional MCP compatibility
+
+For hosts that cannot call a CLI directly, AgentWeb exposes four stable MCP tools:
+
+- `sites_list`
+- `site_describe`
+- `site_call`
+- `site_connect`
+
+Print a configuration snippet with:
+
+```bash
+agentweb mcp-config
+```
+
+The MCP surface intentionally stays small as more sites are installed. An agent
+loads one operation contract only when it needs it.
+
+## Installation checks
+
+Run these in the same environment and user account as the agent host:
+
+```bash
+command -v agentweb
+agentweb --version
+agentweb sites
+agentweb capabilities npmjs.com --query package
+```
+
+If a desktop app cannot find a command that works in your terminal, restart the
+app after installation so it receives the updated `PATH`.
+
+If `agentweb` is still not found, add the installer directory explicitly:
+
+```bash
+export PATH="$HOME/.local/bin:$PATH"
+```
+
+---
+
+Source: docs/ARCHITECTURE.md
+
+# Architecture
+
+AgentWeb separates the stable agent interface from website-specific behavior.
+
+```text
+agent or human
+      |
+      v
+CLI / four-tool MCP surface
+      |
+      v
+Runtime: resolve domain -> validate input -> choose installed adapter
+      |
+      +--> Adapter SDK -> bounded HTTPS request -> normalized JSON
+      |
+      +--> Auth handoff when the website requires a human checkpoint
+      |
+      v
+Local profile, cache, idempotency receipt, and verification metadata
+```
+
+## Public modules
+
+| Module | Responsibility |
+| --- | --- |
+| `cli.py` | Domain-first command parsing and structured errors |
+| `mcp.py` | Small compatibility surface for non-CLI agent hosts |
+| `runtime.py` | Site resolution, dispatch, workflows, idempotency, and envelopes |
+| `sdk.py` | Adapter base classes, HTTP sessions, schemas, normalization, and budgets |
+| `registry.py` | Manifest validation, signed synchronization, audit, and rollback |
+| `connector.py` | Login, OAuth, resumable human checkpoints, and host installation |
+| `auth.py` | Authorization state model |
+| `storage.py` | Profile isolation, atomic files, locks, and read cache |
+| `targets.py` | Domain and URL routing |
+| `capture.py` | Public redaction, trace analysis, and flow-capsule verification |
+| `web_runtime.py` | Site-scoped browser used for authorization and opt-in mapping |
+| `scaffold.py` | Minimal community adapter skeleton |
+
+The private adapter factory is deliberately absent. The public package must import
+and run without it.
+
+## Request lifecycle
+
+1. The runtime resolves a domain, alias, subdomain, or URL against installed
+   manifests.
+2. It locates the operation contract and rejects unknown or extra inputs.
+3. The adapter runs through a site/profile-specific session.
+4. The SDK enforces the allowed host, HTTPS, request limits, confirmation, and
+   cancellation.
+5. The adapter normalizes website output into the operation contract.
+6. The runtime applies output budgets, records idempotency when requested, and
+   returns verification and metadata with the data.
+
+## Registry layout
+
+```text
+registry/
+  index.json
+  sites/
+    example/
+      0.1.0/
+        manifest.json
+        adapter.py
+        evidence.json       # optional semantic evidence
+        evidence/           # optional referenced fixtures
+        flows/              # optional reviewed direct recipes
+```
+
+The index contains the active version and SHA-256 of every distributed file. Source
+control may retain older versions, but package building includes only versions in
+the index.
+
+## Why the CLI is primary
+
+A registry can contain hundreds of sites and thousands of operations. Publishing
+each one as an always-visible tool would consume agent context and slow tool
+selection. The CLI keeps discovery lazy: list sites, search one catalog, inspect
+one schema, then execute. MCP mirrors the same approach with four tools.
+
+## Public/private boundary
+
+The open core defines how adapters run and how users can inspect and trust them.
+The private factory handles large-scale website inventory, automated endpoint
+discovery, generation, semantic release gates, drift monitoring, and repair of the
+official catalog. No public-core module may require the factory at import time or
+runtime.
+
+---
+
+Source: docs/BUILDING_ADAPTERS.md
+
+# Building a community adapter
+
+An adapter is a versioned contract between an agent and one website. A good adapter
+does more than fetch a page: it names user-level actions, validates inputs, returns
+bounded structured data, protects writes, and says honestly what remains missing.
+
+## Create the skeleton
+
+Use a separate local registry while developing:
+
+```bash
+agentweb adapter-new example --base-url https://example.com --root ./registry
+```
+
+This creates `registry/sites/example/0.1.0/manifest.json` and `adapter.py` with a
+safe public home-page operation. Point a test profile at it:
+
+```bash
+AGENTWEB_HOME="$(mktemp -d)" agentweb sync ./registry
+```
+
+## Define the contract first
+
+Each command in `manifest.json` needs:
+
+- a concrete description of what the operation returns or changes;
+- a JSON input schema with required fields, types, ranges, and enums;
+- CLI positional declarations only for arguments that are naturally positional;
+- mutation and confirmation metadata for writes;
+- known errors and human boundaries;
+- bounded output expectations.
+
+Use names such as `search_packages`, `get_paper`, or `create_playlist`. Avoid page
+names, CSS selectors, and vague commands such as `do_action`.
+
+`canonical_domain`, `aliases`, and declarative `url_routes` let agents use normal
+domains and resource URLs without knowing the internal adapter name.
+
+## Implement the direct operation
+
+For straightforward HTTP calls, subclass `RequestRecipeAdapter` and add declarative
+recipes. Add Python methods only when a workflow needs token exchange, pagination,
+signing, error translation, or response normalization.
+
+Never use shell commands or another site's official CLI as the adapter runtime.
+Never accept an arbitrary host from operation input. Add every legitimate API host
+to the fixed manifest and adapter allowlists.
+
+## Authentication
+
+Declare whether public operations require no account and which strategy protects
+account operations. Keep credentials in the local profile through AgentWeb's
+session APIs. Do not place cookies, access tokens, client secrets, or example user
+accounts in manifests, fixtures, source, or documentation.
+
+If a site requires CAPTCHA, passkey, OTP, consent, or payment verification, model
+it as a resumable human checkpoint. Do not claim the adapter bypasses it.
+
+## Writes
+
+Set the operation's mutation metadata and require `confirm`. Validate all inputs
+before making the request. When possible, read the resulting server state and
+return a `verified` field rather than treating a 200 response as proof.
+
+Support an idempotent server key when the website provides one. AgentWeb's task
+receipt prevents local repetition after a recorded success, but it cannot make an
+inherently non-idempotent upstream call safe after an ambiguous network failure.
+
+## Captures and flow capsules
+
+The public `--mapping-mode` and `capture-compile` commands can help inspect a flow
+and produce a redacted structural capsule. They are deliberately basic tools, not
+the private automatic AgentWeb factory.
+
+```bash
+agentweb --mapping-mode example web-start --visible
+agentweb --mapping-mode example web-inspect
+agentweb capture-compile capture.json --operation search --capsule-out search.flow.json
+agentweb verify search.flow.json --offline
+```
+
+Inspect every capture manually before committing it. A structural match is not a
+semantic test. Your regression test must assert user-visible meaning, not merely
+status codes or field presence.
+
+## Coverage and evidence
+
+List known gaps in `coverage.not_mapped`. Do not mark an adapter exhaustive merely
+because every implemented command works. Full parity means the declared website
+surface was inventoried and every advertised stable command has current semantic
+evidence across its stated roles and locales.
+
+Evidence must not contain secrets or personal data. Prefer synthetic fixtures and
+public read-only examples.
+
+## Validate and package
+
+```bash
+agentweb registry-build ./registry
+agentweb audit example --root ./registry
+python -m pytest -q
+python -m build
+```
+
+Create a new adapter version for behavior changes instead of rewriting a released
+bundle in place. A pull request should explain the observed website behavior, the
+direct protocol, tests run, mutation cleanup, and remaining gaps.
+
+Read [Security and trust](SECURITY.md) before implementing authentication or any
+operation that changes remote state.
+
+---
+
+Source: docs/SECURITY.md
+
+# Security and trust
+
+AgentWeb can hold website sessions and run account-changing operations. Treat its
+runtime and every installed adapter as security-sensitive code.
+
+## Local session storage
+
+By default, AgentWeb stores state under `~/.agentweb`. The directory is created
+with owner-only permissions, and cookie files and JSON state are written with mode
+`0600` where the operating system supports Unix permissions.
+
+Cookies are protected by filesystem permissions, not encrypted with an operating
+system keychain in this version. Anyone who can read the user's account files or
+run code as that user may be able to read the sessions. Do not place
+`AGENTWEB_HOME` in a shared or synchronized directory.
+
+Each site and named profile has its own cookie jar. Cache keys include the profile,
+and authenticated reads bypass the shared response cache where required by the
+runtime. Adapters must never copy credentials between profiles.
+
+## Adapter boundaries
+
+Every adapter declares an HTTPS host allowlist. The request runtime rejects hosts
+outside it, manages cookies itself, strips dangerous caller-controlled headers,
+and bounds returned data before it reaches the agent.
+
+This reduces risk but does not make an untrusted adapter safe. Python adapter code
+runs locally with the user's permissions. Review community adapters before
+installation and prefer a registry whose signing key you trust.
+
+## Registry trust
+
+Local registries may be unsigned for development. Remote registries must use HTTPS
+and an Ed25519-signed index. AgentWeb verifies the pinned public key, bundle paths,
+SHA-256 hashes, manifest identity, and manifest contract before replacing an
+installed version. Installation is staged so a failed update does not replace the
+last valid bundle.
+
+The signing private key must never appear in this repository, CI logs, release
+artifacts, or user installations.
+
+## Write confirmation
+
+AgentWeb requires explicit confirmation for operations declared as mutating and
+for generic direct requests using write methods. Confirmation applies to one call;
+login completion is not confirmation for a pending write.
+
+An adapter must not disguise a write as a read to avoid confirmation. Pull requests
+that add writes should include a negative test proving the unconfirmed call is
+rejected before any network mutation.
+
+## Human checkpoints
+
+Passwords, CAPTCHA, OTP, passkeys, legal consent, and payment verification may be
+required by the website. AgentWeb should identify and resume these checkpoints,
+not bypass or weaken them. Secrets should be entered in the website's own trusted
+surface and never returned in AgentWeb output.
+
+## Captures and logs
+
+The public capture analyzer redacts common credential names and response values,
+but no automatic redactor is perfect. Inspect every trace before sharing it. Never
+commit HAR files, screenshots containing personal information, browser profiles,
+verification inputs, cookie files, authorization headers, or account identifiers.
+
+The repository's `.gitignore` blocks common local artifacts, but it is not a
+security boundary.
+
+## Usage analytics
+
+AgentWeb records a random installation ID plus fixed operational metadata: event
+name, mapped site and operation, success, duration, interface, versions, cache use,
+and a structured error code. Account-changing operations are reduced to the generic
+name `account_write`.
+
+It does not accept or store prompts, operation arguments, website responses, URLs,
+exception messages, account identities, cookies, credentials, or IP addresses.
+Events are written to `~/.agentweb/analytics.sqlite3`. Remote delivery is disabled
+unless a PostHog project key is configured, and delivery runs outside the website
+operation so analytics cannot make that operation fail.
+
+Run `agentweb telemetry inspect` to see the complete event shape,
+`agentweb telemetry disable` to stop local and remote recording, or
+`agentweb telemetry reset-id` to replace the random identifier. The global
+dashboard's personal PostHog key remains in owner-only local state and is never
+sent to AgentWeb installations.
+
+## Reporting a vulnerability
+
+Do not open a public issue for a vulnerability involving credential exposure,
+cross-profile access, host-allowlist escape, signature bypass, or unintended
+remote mutation. Use GitHub's private security advisory flow for the repository.
+Include the AgentWeb version, affected adapter and version, a minimal reproduction,
+and whether any real account state changed.
+
+---
+
+Source: docs/ANALYTICS.md
+
+# Usage analytics
+
+AgentWeb includes a localhost dashboard for answering a small set of product
+questions quickly:
+
+- Did a new installation reach a successful website task?
+- Did that installation use AgentWeb again on another day?
+- Which mapped sites and operations are used?
+- Which adapters fail, how often, and with which structured error code?
+- How fast are successful and failed operations?
+- Did the call come from an agent through MCP or directly through the CLI?
+
+Run:
+
+```bash
+agentweb dashboard
+```
+
+The server binds only to `127.0.0.1`, chooses an available port by default, opens
+the system browser, and keeps dashboard credentials outside the page. Use
+`--no-open` on headless machines or `--port PORT` for a stable local address.
+
+## Local and global views
+
+The dashboard always works with this installation's local SQLite events. Its
+source label says **This device**.
+
+To see anonymous aggregate activity from public installations, create a PostHog
+project and expand **Connect all installations** at the bottom of the dashboard.
+Enter:
+
+- The numeric project ID.
+- The public project key used for event ingestion.
+- A personal API key that can query that project.
+- The PostHog API and ingestion hosts for the selected region.
+
+The public project key must also be configured in the AgentWeb build distributed
+to users, or provided as `AGENTWEB_POSTHOG_KEY`. The personal API key is different:
+it stays under `~/.agentweb/dashboard.json` on the maintainer's computer and must
+never be shipped. Once global reads work, the source label changes to **All
+installations**. If PostHog is unavailable, the dashboard falls back to local data
+and says so explicitly.
+
+For a local installation, configure event delivery with:
+
+```bash
+agentweb telemetry configure-posthog \
+  --project-key PROJECT_KEY \
+  --host https://us.i.posthog.com
+```
+
+Set `posthog_project_key` in `src/agentweb/telemetry-defaults.json` before a public
+release to configure every installation. `AGENTWEB_POSTHOG_KEY` and
+`AGENTWEB_POSTHOG_HOST` remain available as deployment overrides.
+
+## What an event contains
+
+An operation event has this fixed shape:
+
+```json
+{
+  "event": "operation_completed",
+  "site": "wikipedia",
+  "operation": "search",
+  "success": true,
+  "duration_ms": 420.0,
+  "interface": "mcp",
+  "agentweb_version": "0.19.3",
+  "adapter_version": "0.8.5",
+  "error_code": null,
+  "from_cache": false
+}
+```
+
+Events also carry a random installation ID and operating-system family. PostHog
+person profiles and IP capture are disabled. Account-changing operation names are
+replaced with `account_write` before storage.
+
+AgentWeb never records prompts, arguments, search terms, product or song names,
+repository names, URLs, website responses, account identities, exception messages,
+cookies, tokens, or credentials. The telemetry API does not accept these fields.
+
+Inspect the representative payload directly:
+
+```bash
+agentweb telemetry inspect
+```
+
+## Controls
+
+```bash
+agentweb telemetry status
+agentweb telemetry enable
+agentweb telemetry disable
+agentweb telemetry reset-id
+agentweb telemetry inspect
+```
+
+`AGENTWEB_TELEMETRY=0` disables recording for one process or environment regardless
+of the saved setting. Disabling telemetry stops both local recording and optional
+remote delivery. Existing local events remain available in the dashboard until the
+user removes their AgentWeb state.
+
+## Metric definitions
+
+**People** means distinct random installation IDs in the selected window. It does
+not mean accounts or named individuals.
+
+**Got a result** means an installation completed at least one successful mapped
+website operation. **Came back** means an activated installation ran an operation
+on at least two distinct UTC dates.
+
+**Website actions** counts logical AgentWeb operations. Internal HTTP requests,
+retries, schema discovery, and dashboard refreshes are not counted as separate
+actions.
+
+---
+
+Source: CONTRIBUTING.md
+
+# Contributing to AgentWeb
+
+AgentWeb welcomes improvements to the open runtime, documentation, tests, and
+reference adapters. Read [the architecture](docs/ARCHITECTURE.md) and
+[security model](docs/SECURITY.md) before changing request, session, registry, or
+write-confirmation behavior.
+
+## Set up the repository
+
+```bash
+git clone https://github.com/AnayGarodia/agentweb.git
+cd agentweb
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install -e '.[dev]'
+python -m pytest -q
+```
+
+`uv sync` and `uv run pytest -q` are equivalent if you use `uv`.
+
+## Choose the right repository
+
+This repository contains the public core and reference adapters. It does not
+contain AgentWeb's private automatic adapter factory or official proprietary
+adapter catalog. A contribution to the public core must not depend on those
+components.
+
+Community adapters are welcome when their code and evidence can be distributed
+under Apache-2.0. Website terms, permissions, and local law still apply.
+
+## Change an adapter
+
+Read [Building an adapter](docs/BUILDING_ADAPTERS.md). Released bundles are
+immutable: create a new version directory for behavior changes, update the active
+index, and keep known gaps explicit.
+
+```bash
+agentweb registry-build src/agentweb/builtin_registry
+agentweb audit <site>
+python -m pytest -q
+```
+
+Never commit credentials, cookies, authorization headers, browser profiles,
+private captures, account data, verification secrets, or signing private keys.
+
+## Change the core
+
+Keep the CLI and four-tool MCP surface lazy and stable. New sites should add
+manifest data and adapter code, not site-specific branches in the core runtime.
+Preserve domain resolution, host allowlists, profile isolation, bounded output,
+structured errors, explicit write confirmation, cancellation, and signed atomic
+registry updates.
+
+Add focused tests that would fail without the change. For a bug fix, test the
+incorrect behavior and the expected agent-facing error or result.
+
+## Documentation for agents
+
+Commands in documentation must exist and be copyable. State whether an example is
+public, authenticated, mutating, or hypothetical. When behavior changes, update
+`README.md`, `llms.txt`, `docs/AGENT_GUIDE.md`, and command help as appropriate.
+
+Avoid broad claims such as “full parity” unless the audit has current evidence for
+the declared surface. Documentation is part of the product contract.
+
+## Before opening a pull request
+
+```bash
+python -m pytest -q
+python -m build
+PYTHONPATH=src python -m agentweb.cli audit
+```
+
+Inspect the built wheel for accidental private files, generated captures, and old
+adapter versions. The wheel should contain only the public modules and active
+reference bundles.
+
+In the pull request, explain the user-visible problem, why the change belongs in
+the public core, tests run, security implications, and remaining limitations.
